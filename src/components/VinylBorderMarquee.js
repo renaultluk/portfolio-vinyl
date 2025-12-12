@@ -31,38 +31,15 @@ const getPositionOnRect = (progress, width, height) => {
   return { x, y, rotation };
 };
 
-const ProcessingLetter = ({ letter, letterPositions, wordIndex, letterIndex }) => {
-    const letterRef = useRef();
-
-    useAnimationFrame(() => {
-        if (!letterRef.current) return;
-        
-        const position = letterPositions.current[wordIndex]?.[letterIndex];
-        if (!position) return;
-        
-        const { x, y, rotation } = position;
-        letterRef.current.style.transform = `translate(calc(${x}px - 50%), calc(${y}px - 50%)) rotate(${rotation}deg)`;
-    });
-
-    return (
-        <span
-            ref={letterRef}
-            className="absolute"
-        >
-            {letter}
-        </span>
-    );
-}
-
 const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) => {
     const containerRef = useRef();
     const childRef = useRef();
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+    const letterRefs = useRef([]);
 
     const { scrollY } = useScroll();
     const scrollVelocity = useVelocity(scrollY);
     const progress = useRef(0);
-    const letterPositions = useRef(data.map(word => Array(word.length).fill(null)));
 
     useAnimationFrame((time, delta) => {
         const container = containerRef.current;
@@ -88,6 +65,7 @@ const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) =>
 
         const borderOverlay = container.querySelector('.border-overlay');
         let maskParts = ['linear-gradient(black, black)'];
+        let refIndex = 0;
         
         data.forEach((word, wordIndex) => {
             const wordProgress = (progress.current + wordIndex * sectionLength) % perimeter;
@@ -95,11 +73,16 @@ const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) =>
                 const letterProgress = wordProgress + (letterIndex * letterSpacing);
                 const position = getPositionOnRect(letterProgress, width, height);
                 
-                // Store position for letter components
-                letterPositions.current[wordIndex][letterIndex] = position;
+                // Update letter DOM directly
+                const letterEl = letterRefs.current[refIndex];
+                if (letterEl) {
+                    letterEl.style.transform = `translate(calc(${position.x}px - 50%), calc(${position.y}px - 50%)) rotate(${position.rotation}deg)`;
+                }
                 
-                // Build mask gradient at same time
+                // Build mask gradient
                 maskParts.push(`radial-gradient(circle ${letterSize}px at ${position.x}px ${position.y}px, transparent ${letterSize}px, black ${letterSize}px)`);
+                
+                refIndex++;
             });
         });
 
@@ -120,15 +103,19 @@ const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) =>
             <div className="border-overlay absolute inset-0 border-6 border-white pointer-events-none" />
             <div ref={childRef} className="animated-child absolute text-white pointer-events-none" style={{ willChange: 'transform' }}>
                 {data.map((word, wordIndex) => 
-                    [...word].map((letter, letterIndex) => 
-                        <ProcessingLetter 
-                            key={`${wordIndex}-${letterIndex}`}
-                            letter={letter}
-                            letterPositions={letterPositions}
-                            wordIndex={wordIndex}
-                            letterIndex={letterIndex}
-                        />
-                    )
+                    [...word].map((letter, letterIndex) => {
+                        const globalIndex = data.slice(0, wordIndex).reduce((sum, w) => sum + w.length, 0) + letterIndex;
+                        return (
+                            <span
+                                key={`${wordIndex}-${letterIndex}`}
+                                ref={el => letterRefs.current[globalIndex] = el}
+                                className="absolute"
+                                style={{ willChange: 'transform' }}
+                            >
+                                {letter}
+                            </span>
+                        );
+                    })
                 )}
             </div>
         </div>
