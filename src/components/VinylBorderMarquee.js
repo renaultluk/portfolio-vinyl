@@ -1,4 +1,4 @@
-import { useAnimationFrame, useScroll, useVelocity } from "framer-motion";
+import { useAnimationFrame, useScroll, useVelocity } from "motion/react";
 import { useRef, useState, useEffect } from "react";
 
 const cornerSmoothing = (p, edgeIndex, borderRadius) => {
@@ -31,13 +31,18 @@ const getPositionOnRect = (progress, width, height) => {
   return { x, y, rotation };
 };
 
-const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) => {
+const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7, scrollContainer }) => {
     const containerRef = useRef();
     const childRef = useRef();
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
     const letterRefs = useRef([]);
 
-    const { scrollY } = useScroll();
+    const { scrollY } = useScroll(
+        scrollContainer ? {
+            container: scrollContainer,
+            layoutEffect: false
+        } : undefined
+    );
     const scrollVelocity = useVelocity(scrollY);
     const progress = useRef(0);
 
@@ -98,7 +103,7 @@ const VinylBorderMarquee = ({ data, baseSpeed = 50, scrollMultiplier = 0.7 }) =>
     return (
         <div
             ref={containerRef}
-            className="flex relative h-screen w-full"
+            className="flex relative h-full w-full"
         >
             <div className="border-overlay absolute inset-0 border-6 border-white pointer-events-none" />
             <div ref={childRef} className="animated-child absolute text-white pointer-events-none" style={{ willChange: 'transform' }}>
